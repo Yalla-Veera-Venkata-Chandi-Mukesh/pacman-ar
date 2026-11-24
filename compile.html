@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<!--
+  Compiles assets/targets/poster_target.jpg into assets/targets/poster.mind
+  Open http://localhost:8000/tools/compile.html while tools/dev_server.py is running.
+  (Same result as MindAR's online compiler, but saves the file automatically.)
+-->
+<html>
+  <head><meta charset="utf-8"><title>Compile poster target</title></head>
+  <body style="font-family: monospace; background:#111; color:#eee; padding:20px">
+    <h2>MindAR target compiler</h2>
+    <pre id="log">Starting…</pre>
+    <script type="module">
+      import { Compiler } from "https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image.prod.js";
+      const log = (m) => { document.getElementById('log').textContent += "\n" + m; };
+      const SRC = "../assets/targets/poster_target.jpg";
+      const OUT = "/assets/targets/poster.mind";
+
+      const img = new Image();
+      img.src = SRC;
+      await img.decode();
+      log(`Loaded ${SRC} (${img.width} x ${img.height})`);
+
+      const compiler = new Compiler();
+      const t0 = performance.now();
+      const dataList = await compiler.compileImageTargets([img], (p) => {
+        document.title = `Compiling ${p.toFixed(0)}%`;
+      });
+      log(`Compiled in ${((performance.now() - t0) / 1000).toFixed(1)} s`);
+
+      // Feature-point counts = how much "detail" MindAR found (more = better tracking)
+      const d = dataList[0];
+      const matching = d.matchingData.map(m => m.maximaPoints.length + m.minimaPoints.length);
+      const tracking = d.trackingData.map(t => t.points.length);
+      log(`Matching points per scale: ${matching.join(", ")}`);
+      log(`Tracking points per scale: ${tracking.join(", ")}`);
+      window.compileStats = { matching, tracking };
+
+      const buffer = compiler.exportData();
+      const res = await fetch(OUT, { method: "PUT", body: buffer });
+      log(res.ok ? `Saved ${OUT} (${buffer.byteLength} bytes) ✅` : `Save failed: ${res.status}`);
+      window.compileDone = res.ok;
+    </script>
+  </body>
+</html>
